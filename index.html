@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RE vs Stocks Return Comparison</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+    <style>
+        body { 
+            font-family: -apple-system, system-ui, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        .value-display {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .charts {
+            display: grid;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Real Estate vs. Stocks Return Comparison</h1>
+        
+        <div class="inputs">
+            <div>
+                <h3>Real Estate Inputs</h3>
+                <div class="input-group">
+                    <label for="reInitialNAV">Initial NAV</label>
+                    <input type="number" id="reInitialNAV" value="1000000" step="100000">
+                    <span class="value-display" id="reInitialNAV-display">$1,000,000</span>
+                </div>
+                <div class="input-group">
+                    <label for="reAnnualReturn">Annual Return (%)</label>
+                    <input type="range" id="reAnnualReturn" min="0" max="15" value="5" step="0.1">
+                    <span class="value-display" id="reAnnualReturn-display">5.0%</span>
+                </div>
+                <div class="input-group">
+                    <label for="reNAVGrowth">NAV Growth Rate (%)</label>
+                    <input type="range" id="reNAVGrowth" min="0" max="10" value="3" step="0.1">
+                    <span class="value-display" id="reNAVGrowth-display">3.0%</span>
+                </div>
+                <div class="input-group">
+                    <label for="reIncomeTaxRate">Income Tax Rate (%)</label>
+                    <input type="range" id="reIncomeTaxRate" min="0" max="60" value="47" step="0.1">
+                    <span class="value-display" id="reIncomeTaxRate-display">47.0%</span>
+                </div>
+            </div>
+            
+            <div>
+                <h3>Stock Portfolio Inputs</h3>
+                <div class="input-group">
+                    <label for="stockInitialNAV">Initial NAV</label>
+                    <input type="number" id="stockInitialNAV" value="1000000" step="100000">
+                    <span class="value-display" id="stockInitialNAV-display">$1,000,000</span>
+                </div>
+                <div class="input-group">
+                    <label for="stockTotalReturn">Total Return (%)</label>
+                    <input type="range" id="stockTotalReturn" min="0" max="15" value="11.8" step="0.1">
+                    <span class="value-display" id="stockTotalReturn-display">11.8%</span>
+                </div>
+                <div class="input-group">
+                    <label for="stockCashoutPercent">Annual Cashout (%)</label>
+                    <input type="range" id="stockCashoutPercent" min="0" max="10" value="5" step="0.1">
+                    <span class="value-display" id="stockCashoutPercent-display">5.0%</span>
+                </div>
+                <div class="input-group">
+                    <label for="stockCapGainsTax">Capital Gains Tax (%)</label>
+                    <input type="range" id="stockCapGainsTax" min="0" max="45" value="30" step="0.1">
+                    <span class="value-display" id="stockCapGainsTax-display">30.0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="years">Projection Years</label>
+            <input type="range" id="years" min="5" max="50" value="20" step="1">
+            <span class="value-display" id="years-display">20 years</span>
+        </div>
+
+        <div class="charts">
+            <canvas id="navChart"></canvas>
+            <canvas id="cashFlowChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Formatting functions
+        const formatCurrency = (value) => {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            }).format(value);
+        };
+
+        const formatPercent = (value) => {
+            return new Intl.NumberFormat('en-US', {
+                style: 'percent',
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+            }).format(value / 100);
+        };
+
+        // Initialize charts
+        const navChart = new Chart(document.getElementById('navChart'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'RE NAV',
+                        borderColor: 'rgb(75, 192, 192)',
+                        data: []
+                    },
+                    {
+                        label: 'Stock NAV',
+                        borderColor: 'rgb(255, 99, 132)',
+                        data: []
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'NAV Growth Over Time'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + formatCurrency(context.raw);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: {
+                            callback: function(value) {
+                                return formatCurrency(value);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const cashFlowChart = new Chart(document.getElementById('cashFlowChart'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'RE Cash Flow',
+                        borderColor: 'rgb(75, 192, 192)',
+                        data: []
+                    },
+                    {
+                        label: 'Stock Cash Flow',
+                        borderColor: 'rgb(255, 99, 132)',
+                        data: []
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Annual After-Tax Cash Flow'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + formatCurrency(context.raw);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: {
+                            callback: function(value) {
+                                return formatCurrency(value);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Calculate returns and update charts
+        function calculateAndUpdateCharts() {
+            const inputs = {
+                reInitialNAV: parseFloat(document.getElementById('reInitialNAV').value),
+                reAnnualReturn: parseFloat(document.getElementById('reAnnualReturn').value),
+                reNAVGrowth: parseFloat(document.getElementById('reNAVGrowth').value),
+                reIncomeTaxRate: parseFloat(document.getElementById('reIncomeTaxRate').value),
+                stockInitialNAV: parseFloat(document.getElementById('stockInitialNAV').value),
+                stockTotalReturn: parseFloat(document.getElementById('stockTotalReturn').value),
+                stockCashoutPercent: parseFloat(document.getElementById('stockCashoutPercent').value),
+                stockCapGainsTax: parseFloat(document.getElementById('stockCapGainsTax').value),
+                years: parseInt(document.getElementById('years').value)
+            };
+
+            const years = Array.from({length: inputs.years + 1}, (_, i) => i);
+            let reNAV = inputs.reInitialNAV;
+            let stockNAV = inputs.stockInitialNAV;
+            const reNAVs = [];
+            const stockNAVs = [];
+            const reCashFlows = [];
+            const stockCashFlows = [];
+
+            for (let year = 0; year <= inputs.years; year++) {
+                // Real Estate calculations
+                const reIncome = reNAV * (inputs.reAnnualReturn / 100);
+                const reAfterTaxIncome = reIncome * (1 - inputs.reIncomeTaxRate / 100);
+                reNAV = reNAV * (1 + inputs.reNAVGrowth / 100);
+                
+                // Stock calculations
+                const stockGrowth = stockNAV * (inputs.stockTotalReturn / 100);
+                const stockCashout = stockNAV * (inputs.stockCashoutPercent / 100);
+                const stockAfterTaxCashout = stockCashout * (1 - inputs.stockCapGainsTax / 100);
+                stockNAV = (stockNAV + stockGrowth - stockCashout);
+
+                reNAVs.push(reNAV);
+                stockNAVs.push(stockNAV);
+                reCashFlows.push(reAfterTaxIncome);
+                stockCashFlows.push(stockAfterTaxCashout);
+            }
+
+            // Update charts
+            navChart.data.labels = years;
+            navChart.data.datasets[0].data = reNAVs;
+            navChart.data.datasets[1].data = stockNAVs;
+            navChart.update();
+
+            cashFlowChart.data.labels = years;
+            cashFlowChart.data.datasets[0].data = reCashFlows;
+            cashFlowChart.data.datasets[1].data = stockCashFlows;
+            cashFlowChart.update();
+        }
+
+        // Update display values and add event listeners
+        document.querySelectorAll('input').forEach(input => {
+            const displayEl = document.getElementById(`${input.id}-display`);
+            
+            const updateDisplay = () => {
+                if (input.type === 'range') {
+                    if (input.id === 'years') {
+                        displayEl.textContent = `${input.value} years`;
+                    } else {
+                        displayEl.textContent = formatPercent(input.value);
+                    }
+                } else {
+                    displayEl.textContent = formatCurrency(input.value);
+                }
+            };
+
+            input.addEventListener('input', () => {
+                updateDisplay();
+                calculateAndUpdateCharts();
+            });
+
+            // Initial update
+            updateDisplay();
+        });
+
+        // Initial calculation
+        calculateAndUpdateCharts();
+    </script>
+</body>
+</html>
